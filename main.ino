@@ -1,24 +1,27 @@
-int WATERPUMP = 13; //motor pump connected to pin 13
-int sensor = 0; //sensor digital pin connected to pin 0
-const int AirValue = 462;   //you need to replace this value with Value_1
-const int WaterValue = 218;  //you need to replace this value with Value_2
-int intervals = 81.3;  //(AirValue - WaterValue)/3
-int soilMoistureValue = 0;
+const int WATER_PUMP_PIN_ID   = 13;
+const int WATER_SENSOR_PIN_ID = 0;
+const int AIRVALUE            = 462;
+const int WATERVALUE          = 218;
+const int SERIAL_BAUD_RATE    = 9600;
+const int TIME_DELAY          = 60*60*2*1000;
+int intervals                 = (AIRVALUE - WATERVALUE) / 3;
+int soilMoistureValue         = 0;
+int airValuePerInterval       = AIRVALUE - intervals;
 
-void setup() {
-  Serial.begin(9600); // open serial port, set the baud rate to 9600 bps
-  pinMode(13,OUTPUT); //Set pin 13 as OUTPUT pin
+void setup()
+{
+  Serial.begin(SERIAL_BAUD_RATE);
+  pinMode(WATER_PUMP_PIN_ID, OUTPUT);
 }
 
 void loop()
 {
-  soilMoistureValue = analogRead(sensor);  //put Sensor insert into soil
-  if(soilMoistureValue < AirValue && soilMoistureValue > (AirValue - intervals))
-  {
-    digitalWrite(13,HIGH);
+  soilMoistureValue = analogRead(WATER_SENSOR_PIN_ID);
+ 
+  if(soilMoistureValue < AIRVALUE && soilMoistureValue > airValuePerInterval) {
+    digitalWrite(WATER_PUMP_PIN_ID, HIGH);
   } else {
-    digitalWrite(13,LOW)
+    digitalWrite(WATER_PUMP_PIN_ID, LOW);
   }
-  delay(7,200,000); //Wait for 2 hours and then continue the loop.
+  delay(TIME_DELAY);
 }
-
