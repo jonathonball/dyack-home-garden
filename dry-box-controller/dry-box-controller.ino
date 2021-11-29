@@ -5,14 +5,10 @@
 #include <string.h>
 
 /* Application behavior */
-const int PAD_LEFT                = 0;
-const int PAD_RIGHT               = 1;
-const int buttonPin               = 1;
-const int BUTTON_INDICATOR_COL    = 10;
-const int BUTTON_INDICATOR_ROW    = 1;
-const unsigned long STARTUP_DELAY = 3000ul;
-const unsigned long BAUD_RATE     = 9600ul;
-bool buttonIsPushed               = false;
+const int PAD_LEFT                   = 0;
+const int PAD_RIGHT                  = 1;
+const unsigned long STARTUP_DELAY    = 3000ul;
+const unsigned long BAUD_RATE        = 9600ul;
 
 /* LCD1602 Module */
 const int LCD_WIDTH  = 16;
@@ -175,9 +171,6 @@ void setup()
   // DS3231 requires we start the wire library
   Wire.begin();
 
-  // Pull up the pin for our button
-  pinMode( buttonPin, INPUT_PULLUP );
-
   // Wait a moment before starting
   delay( STARTUP_DELAY );
   lcd.clear();
@@ -213,31 +206,10 @@ void datetime_tasks()
 }
 
 /**
- * Handles button presses
- */
-void button_tasks()
-{
-  if ( digitalRead( buttonPin ) == LOW && buttonIsPushed == false ) {
-    buttonIsPushed = true;
-    Serial.println( "button press" );
-    lcd.setCursor( BUTTON_INDICATOR_COL, BUTTON_INDICATOR_ROW );
-    lcd.write( "B" );
-  }
-  if ( digitalRead( buttonPin ) == HIGH && buttonIsPushed == true ) {
-    buttonIsPushed = false;
-    Serial.println( "button release" );
-    lcd.setCursor( BUTTON_INDICATOR_COL, BUTTON_INDICATOR_ROW );
-    lcd.write( " " );
-    delay( 100 );
-  }
-}
-
-/**
  * This function is ran in an endless loop while the microcontroller is running
  */
 void loop()
 {
   environment_tasks();
   datetime_tasks();
-  button_tasks();
 }
