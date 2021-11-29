@@ -5,10 +5,10 @@
 #include <string.h>
 
 /* Application behavior */
-const int PAD_LEFT                   = 0;
-const int PAD_RIGHT                  = 1;
-const unsigned long STARTUP_DELAY    = 3000ul;
-const unsigned long BAUD_RATE        = 9600ul;
+const int PAD_LEFT                = 0;
+const int PAD_RIGHT               = 1;
+const unsigned long STARTUP_DELAY = 3000ul;
+const unsigned long BAUD_RATE     = 9600ul;
 
 /* LCD1602 Module */
 const int LCD_WIDTH  = 16;
