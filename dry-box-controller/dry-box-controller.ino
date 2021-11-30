@@ -158,7 +158,7 @@ String getDateFromRTC()
     String month          = padString( PAD_LEFT, DATE_TIME_WIDTH, "0", String( now.month() ) );
     String day            = padString( PAD_LEFT, DATE_TIME_WIDTH, "0", String( now.day() ) );
     current_date          = year + "/" + month + "/" + day;
-    Serial.println( "DATE: " + current_date );
+    Serial.println( "[DS3231]: " + current_date );
   }
   return current_date;
 }
@@ -177,32 +177,9 @@ String getTimeFromRTC()
     String hour           = padString( PAD_LEFT, DATE_TIME_WIDTH, "0", String( now.hour() ) );
     String minute         = padString( PAD_LEFT, DATE_TIME_WIDTH, "0", String( now.minute() ) );
     current_time          = hour + ":" + minute;
-    Serial.println( "TIME: " + current_time );
+    Serial.println( "[DS3231]: " + current_time );
   }
   return current_time;
-}
-
-/**
- * This function is called once on microcontroller startup
- */
-void setup()
-{
-  // Initialized serial connection
-  Serial.begin( BAUD_RATE );
-
-  // Screen
-  lcd.begin( LCD_WIDTH, LCD_HEIGHT );
-  lcd.print( "Initializing..." );
-
-  // DS3231 requires we start the wire library
-  Wire.begin();
-
-  // Start the infrared receiver
-  IrReceiver.begin(IR_PIN, IR_LED_FEEDBACK);
-
-  // Wait a moment before starting
-  delay( STARTUP_DELAY );
-  lcd.clear();
 }
 
 /**
@@ -234,6 +211,9 @@ void datetime_tasks()
   lcd.write( formattedTime.c_str() );
 }
 
+/**
+ * Checks to see if the IR receiver has received a code
+ */
 void ir_tasks()
 {
   if ( IrReceiver.decode() ) {
@@ -244,12 +224,36 @@ void ir_tasks()
       // Check to see if the IR command is one we recognized
       for ( int index = 0; index < IR_COMMAND_COUNT; index++ ) {
         if ( IR_COMMANDS[index].command == command ) {
-          Serial.println( "GOT " + IR_COMMANDS[index].button );
+          Serial.println( "[HX-M121]: Received button " + IR_COMMANDS[index].button );
         }
       }
     }
     IrReceiver.resume();
   }
+}
+
+/**
+ * This function is called once on microcontroller startup
+ */
+void setup()
+{
+  // Initialized serial connection
+  Serial.begin( BAUD_RATE );
+  Serial.println( "Initializing..." );
+
+  // Screen
+  lcd.begin( LCD_WIDTH, LCD_HEIGHT );
+  lcd.print( "Initializing..." );
+
+  // DS3231 requires we start the wire library
+  Wire.begin();
+
+  // Start the infrared receiver
+  IrReceiver.begin(IR_PIN, IR_LED_FEEDBACK);
+
+  // Wait a moment before starting
+  delay( STARTUP_DELAY );
+  lcd.clear();
 }
 
 /**
