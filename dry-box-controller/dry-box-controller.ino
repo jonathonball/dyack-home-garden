@@ -3,6 +3,7 @@
 #include <dht.h>
 #include <LiquidCrystal.h>
 #include <string.h>
+#include <IRremote.hpp>
 
 /* Application behavior */
 const int PAD_LEFT                = 0;
@@ -39,6 +40,29 @@ const int TIME_COL                    = 0;
 const int TIME_ROW                    = 1;
 const int DATE_TIME_WIDTH             = 2;
 
+/* HK-M121 IR Receiver Module */
+const int IR_PIN          = 4;
+const int IR_LED_FEEDBACK = 1;
+
+struct IR_COMMAND {
+  int command;
+  String button;
+};
+const int IR_COMMAND_COUNT = 12;
+const IR_COMMAND IR_COMMANDS[IR_COMMAND_COUNT] = {
+  { 0xC,  "1" },
+  { 0x18, "2" },
+  { 0x5E, "3" },
+  { 0x8,  "4" },
+  { 0x1C, "5" },
+  { 0x5A, "6" },
+  { 0x42, "7" },
+  { 0x52, "8" },
+  { 0x4A, "9" },
+  { 0x40, "play/pause" },
+  { 0x9,  "up" },
+  { 0x7,  "down" }
+};
 
 /**
  * Converts celsius (C) to fehrenheit (F)
@@ -134,6 +158,7 @@ String getDateFromRTC()
     String month          = padString( PAD_LEFT, DATE_TIME_WIDTH, "0", String( now.month() ) );
     String day            = padString( PAD_LEFT, DATE_TIME_WIDTH, "0", String( now.day() ) );
     current_date          = year + "/" + month + "/" + day;
+    Serial.println( "DATE: " + current_date );
   }
   return current_date;
 }
@@ -152,6 +177,7 @@ String getTimeFromRTC()
     String hour           = padString( PAD_LEFT, DATE_TIME_WIDTH, "0", String( now.hour() ) );
     String minute         = padString( PAD_LEFT, DATE_TIME_WIDTH, "0", String( now.minute() ) );
     current_time          = hour + ":" + minute;
+    Serial.println( "TIME: " + current_time );
   }
   return current_time;
 }
@@ -170,6 +196,9 @@ void setup()
 
   // DS3231 requires we start the wire library
   Wire.begin();
+
+  // Start the infrared receiver
+  IrReceiver.begin(IR_PIN, IR_LED_FEEDBACK);
 
   // Wait a moment before starting
   delay( STARTUP_DELAY );
@@ -202,7 +231,25 @@ void datetime_tasks()
   lcd.setCursor( DATE_COL, DATE_ROW );
   lcd.write( formattedDate.c_str() );
   lcd.setCursor( TIME_COL, TIME_ROW );
-  lcd.write( formattedTime.c_str() ); 
+  lcd.write( formattedTime.c_str() );
+}
+
+void ir_tasks()
+{
+  if ( IrReceiver.decode() ) {
+    int command = IrReceiver.decodedIRData.command;
+    // Check if the command is a repeat
+    if ( !( IrReceiver.decodedIRData.flags & (IRDATA_FLAGS_IS_AUTO_REPEAT | IRDATA_FLAGS_IS_REPEAT)) ) {
+      IrReceiver.printIRResultShort( &Serial );
+      // Check to see if the IR command is one we recognized
+      for ( int index = 0; index < IR_COMMAND_COUNT; index++ ) {
+        if ( IR_COMMANDS[index].command == command ) {
+          Serial.println( "GOT " + IR_COMMANDS[index].button );
+        }
+      }
+    }
+    IrReceiver.resume();
+  }
 }
 
 /**
@@ -212,4 +259,5 @@ void loop()
 {
   environment_tasks();
   datetime_tasks();
+  ir_tasks();
 }
