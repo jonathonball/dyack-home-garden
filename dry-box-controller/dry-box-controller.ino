@@ -64,6 +64,80 @@ const IR_COMMAND IR_COMMANDS[IR_COMMAND_COUNT] = {
   { 0x7,  "down" }
 };
 
+/* ScreenBuffer Object stores screen data so that we can switch between screen. */
+class ScreenBuffer
+{
+private:
+  String rows[ LCD_HEIGHT ];
+  int cursorX;
+  int cursorY;
+
+  String createRow()
+  {
+    String output = "";
+    for ( int i = 0; i < LCD_WIDTH; i++ )
+    {
+      output += " ";
+    }
+    return output;
+  }
+
+public:
+  ScreenBuffer()
+  {
+    cursorX = 0;
+    cursorY = 0;
+    for ( int i = 0; i < LCD_HEIGHT; i++ )
+    {
+      rows[ i ] = createRow();
+    }
+  }
+
+  void setCursorX( int x ) { cursorX = x; }
+  void setCursorY( int y ) { cursorY = y; }
+
+  void setCursor( int x, int y )
+  {
+    cursorX = x;
+    cursorY = y;
+  }
+
+  String getRow( int row ) { return rows[ row ]; }
+
+  void write( String str )
+  {
+    int strIndex = 0;
+    int terminator = cursorX + str.length();
+    for ( int x = cursorX; x < terminator; x++ )
+    {
+      rows[ cursorY ][ x ] = str[ strIndex ];
+      strIndex++;
+    }
+  }
+
+  void write( int x, int y, String str )
+  {
+    setCursorX( x );
+    setCursorY( y );
+    write( str );
+  }
+};
+ScreenBuffer screens[] = {
+  ScreenBuffer(), ScreenBuffer()
+};
+const int SCREEN_MAIN = 0;
+const int SCREEN_SCHEDULE = 1;
+int active_screen = SCREEN_MAIN;
+
+void writeScreenToLCD( int screen )
+{
+  for ( int i = 0; i < LCD_HEIGHT; i++ )
+  {
+    lcd.setCursor( 0, i );
+    lcd.write( screens[ screen ].getRow( i ).c_str() );
+  }
+}
+
 /**
  * Converts celsius (C) to fehrenheit (F)
  * @param celsius - The temperature measured celcius
@@ -191,10 +265,8 @@ void environment_tasks()
   String* environment         = checkEnvironment();
   String formattedTemperature = padString( PAD_LEFT, TEMPERATURE_SCREEN_WIDTH, " ", environment[RESULT_INDEX_TEMPERATURE] );
   String formattedHumidity    = padString( PAD_LEFT, HUMIDITY_SCREEN_WIDTH,    " ", environment[RESULT_INDEX_HUMIDITY]    );
-  lcd.setCursor( TEMPERATURE_COL, TEMPERATURE_ROW );
-  lcd.write( formattedTemperature.c_str() );
-  lcd.setCursor( HUMIDITY_COL, HUMIDITY_ROW );
-  lcd.write( formattedHumidity.c_str() );
+  screens[ SCREEN_MAIN ].write( TEMPERATURE_COL, TEMPERATURE_ROW, formattedTemperature.c_str() );
+  screens[ SCREEN_MAIN ].write( HUMIDITY_COL, HUMIDITY_ROW, formattedHumidity.c_str() );
 }
 
 /**
@@ -205,10 +277,8 @@ void datetime_tasks()
   // Get current/date time and then write them to the LCD
   String formattedDate = getDateFromRTC();
   String formattedTime = getTimeFromRTC();
-  lcd.setCursor( DATE_COL, DATE_ROW );
-  lcd.write( formattedDate.c_str() );
-  lcd.setCursor( TIME_COL, TIME_ROW );
-  lcd.write( formattedTime.c_str() );
+  screens[ SCREEN_MAIN ].write( DATE_COL, DATE_ROW, formattedDate.c_str() );
+  screens[ SCREEN_MAIN ].write( TIME_COL, TIME_ROW, formattedTime.c_str() );
 }
 
 /**
@@ -264,4 +334,5 @@ void loop()
   environment_tasks();
   datetime_tasks();
   ir_tasks();
+  writeScreenToLCD( active_screen );
 }
