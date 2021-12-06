@@ -68,10 +68,14 @@ const IR_COMMAND IR_COMMANDS[IR_COMMAND_COUNT] = {
 class ScreenBuffer
 {
 private:
-  String rows[ LCD_HEIGHT ];
-  int cursorX;
-  int cursorY;
+  String rows[ LCD_HEIGHT ]; // contains rows of characters
+  int cursorX;               // current x position of the cursor on the screen
+  int cursorY;               // current y position of the cursor on the screen
+  // top left is 0, 0
 
+  /**
+   * Makes a new blank row
+   */
   String createRow()
   {
     String output = "";
@@ -83,6 +87,9 @@ private:
   }
 
 public:
+  /**
+   * Initializer, ran when object is created
+   */
   ScreenBuffer()
   {
     cursorX = 0;
@@ -93,10 +100,12 @@ public:
     }
   }
 
+  /**
+   * Adjust the postion of the cursor
+   */
   void setCursorX( int x ) { cursorX = x; }
   void setCursorY( int y ) { cursorY = y; }
-
-  void setCursor( int x, int y )
+  void setCursorPosition( int x, int y )
   {
     cursorX = x;
     cursorY = y;
@@ -117,24 +126,30 @@ public:
 
   void write( int x, int y, String str )
   {
-    setCursorX( x );
-    setCursorY( y );
+    setCursorPosition( x, y );
     write( str );
   }
 };
+
+// Create a screen buffer object for each screen
 ScreenBuffer screens[] = {
   ScreenBuffer(), ScreenBuffer()
 };
+// These definitions exist so we can call the screens by name instead of number
 const int SCREEN_MAIN = 0;
 const int SCREEN_SCHEDULE = 1;
+// Set the start-up screen
 int active_screen = SCREEN_MAIN;
 
-void writeScreenToLCD( int screen )
+/**
+ * Send a reference to a ScreenBuffer object to the LCD screen
+ */
+void writeScreenToLCD( )
 {
   for ( int i = 0; i < LCD_HEIGHT; i++ )
   {
     lcd.setCursor( 0, i );
-    lcd.write( screens[ screen ].getRow( i ).c_str() );
+    lcd.write( screens[ active_screen ].getRow( i ).c_str() );
   }
 }
 
@@ -334,5 +349,5 @@ void loop()
   environment_tasks();
   datetime_tasks();
   ir_tasks();
-  writeScreenToLCD( active_screen );
+  writeScreenToLCD( );
 }
