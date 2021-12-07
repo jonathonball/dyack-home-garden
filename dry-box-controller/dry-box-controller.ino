@@ -4,6 +4,7 @@
 #include <LiquidCrystal.h>
 #include <string.h>
 #include <IRremote.hpp>
+#include <LinkedList.h>
 
 /* Application behavior */
 const int PAD_LEFT                = 0;
@@ -44,12 +45,13 @@ const int DATE_TIME_WIDTH             = 2;
 const int IR_PIN          = 4;
 const int IR_LED_FEEDBACK = 1;
 
-struct IR_COMMAND {
+struct IrCommand {
   int command;
   String button;
 };
 const int IR_COMMAND_COUNT = 12;
-const IR_COMMAND IR_COMMANDS[IR_COMMAND_COUNT] = {
+// These remote codes were read from an Elegoo remote
+const IrCommand IR_COMMANDS[ IR_COMMAND_COUNT ] = {
   { 0xC,  "1" },
   { 0x18, "2" },
   { 0x5E, "3" },
@@ -63,6 +65,8 @@ const IR_COMMAND IR_COMMANDS[IR_COMMAND_COUNT] = {
   { 0x9,  "up" },
   { 0x7,  "down" }
 };
+LinkedList<IrCommand> *IRCommandQueue = new LinkedList<IrCommand>();
+const int MAX_IR_COMMAND_QUEUE_SIZE = 5;
 
 /* ScreenBuffer Object stores screen data so that we can switch between screen. */
 class ScreenBuffer
@@ -71,7 +75,7 @@ private:
   String rows[ LCD_HEIGHT ]; // contains rows of characters
   int cursorX;               // current x position of the cursor on the screen
   int cursorY;               // current y position of the cursor on the screen
-  // top left is 0, 0
+                             // top left is 0, 0
 
   /**
    * Makes a new blank row
@@ -88,7 +92,7 @@ private:
 
 public:
   /**
-   * Initializer, ran when object is created
+   * Initializer, ran when ScreenBuffer object is created
    */
   ScreenBuffer()
   {
@@ -138,8 +142,8 @@ ScreenBuffer screens[] = {
 // These definitions exist so we can call the screens by name instead of number
 const int SCREEN_MAIN = 0;
 const int SCREEN_SCHEDULE = 1;
-// Set the start-up screen
-int active_screen = SCREEN_MAIN;
+
+int activeScreen = SCREEN_MAIN; // The currently selected (visbile) screen
 
 /**
  * Send a reference to a ScreenBuffer object to the LCD screen
@@ -149,7 +153,7 @@ void writeScreenToLCD( )
   for ( int i = 0; i < LCD_HEIGHT; i++ )
   {
     lcd.setCursor( 0, i );
-    lcd.write( screens[ active_screen ].getRow( i ).c_str() );
+    lcd.write( screens[ activeScreen ].getRow( i ).c_str() );
   }
 }
 
@@ -157,7 +161,7 @@ void writeScreenToLCD( )
  * Converts celsius (C) to fehrenheit (F)
  * @param celsius - The temperature measured celcius
  */
-float celsius2fahrenheit( float celsius )
+float celsiusToFahrenheit( float celsius )
 {
   return ( celsius * 1.8 ) + 32.0;
 }
@@ -171,15 +175,15 @@ String * checkEnvironment()
   static String results[2];
   static String temperature                  = "?F";
   static String humidity                     = "?%";
-  static unsigned long measurement_timestamp = millis();
+  static unsigned long measurementTimestamp  = millis();
 
-  if ( millis() - measurement_timestamp > ENVIRONMENT_READ_INTERVAL ) {
-    measurement_timestamp = millis();
+  if ( millis() - measurementTimestamp > ENVIRONMENT_READ_INTERVAL ) {
+    measurementTimestamp = millis();
     Serial.print( "[DHT11]: " );
     int check = DHT.read11( DHT11_PIN );
     if ( check == DHTLIB_OK ) {
       Serial.println( "SENSOR READ OK" );
-      temperature =  String( celsius2fahrenheit( DHT.temperature ), ENVIRONMENT_PRECISION );
+      temperature =  String( celsiusToFahrenheit( DHT.temperature ), ENVIRONMENT_PRECISION );
       temperature += String( "F" );
       humidity    =  String( DHT.humidity, ENVIRONMENT_PRECISION );
       humidity    += String( "%" );
@@ -237,19 +241,19 @@ String padString( int side, int width, String padding, String subject )
  */
 String getDateFromRTC()
 {
-  static unsigned long measurement_timestamp = RTC_READ_INTERVAL;
-  static String current_date                 = "????-??-??";
+  static unsigned long measurementTimestamp = RTC_READ_INTERVAL;
+  static String currentDate                 = "????-??-??";
 
-  if ( millis() - measurement_timestamp > RTC_READ_INTERVAL ) {
-    measurement_timestamp = millis();
+  if ( millis() - measurementTimestamp > RTC_READ_INTERVAL ) {
+    measurementTimestamp = millis();
     DateTime now          = myRTC.now();
     String year           = padString( PAD_LEFT, DATE_TIME_WIDTH, "0", String( now.year() ) );
     String month          = padString( PAD_LEFT, DATE_TIME_WIDTH, "0", String( now.month() ) );
     String day            = padString( PAD_LEFT, DATE_TIME_WIDTH, "0", String( now.day() ) );
-    current_date          = year + "/" + month + "/" + day;
-    Serial.println( "[DS3231]: " + current_date );
+    currentDate           = year + "/" + month + "/" + day;
+    Serial.println( "[DS3231]: " + currentDate );
   }
-  return current_date;
+  return currentDate;
 }
 
 /**
@@ -257,29 +261,30 @@ String getDateFromRTC()
  */
 String getTimeFromRTC()
 {
-  static unsigned long measurement_timestamp = RTC_READ_INTERVAL;
-  static String current_time                 = "??:??";
+  static unsigned long measurementTimestamp = RTC_READ_INTERVAL;
+  static String currentTime                 = "??:??";
 
-  if ( millis() - measurement_timestamp > RTC_READ_INTERVAL ) {
-    measurement_timestamp = millis();
+  if ( millis() - measurementTimestamp > RTC_READ_INTERVAL ) {
+    measurementTimestamp = millis();
     DateTime now          = myRTC.now();
     String hour           = padString( PAD_LEFT, DATE_TIME_WIDTH, "0", String( now.hour() ) );
     String minute         = padString( PAD_LEFT, DATE_TIME_WIDTH, "0", String( now.minute() ) );
-    current_time          = hour + ":" + minute;
-    Serial.println( "[DS3231]: " + current_time );
+    currentTime           = hour + ":" + minute;
+    Serial.println( "[DS3231]: " + currentTime );
   }
-  return current_time;
+  return currentTime;
 }
 
 /**
  * Gathers information from environmental sensors, formats it, and sends it to the screen
  */
-void environment_tasks()
+void environmentTasks()
 {
   // Get temperature and humidity then write them to the LCD
   String* environment         = checkEnvironment();
-  String formattedTemperature = padString( PAD_LEFT, TEMPERATURE_SCREEN_WIDTH, " ", environment[RESULT_INDEX_TEMPERATURE] );
-  String formattedHumidity    = padString( PAD_LEFT, HUMIDITY_SCREEN_WIDTH,    " ", environment[RESULT_INDEX_HUMIDITY]    );
+  String formattedTemperature = padString( PAD_LEFT, TEMPERATURE_SCREEN_WIDTH, " ", environment[ RESULT_INDEX_TEMPERATURE ] );
+  String formattedHumidity    = padString( PAD_LEFT, HUMIDITY_SCREEN_WIDTH,    " ", environment [RESULT_INDEX_HUMIDITY ]    );
+  // writes directly to the main screen even if its not visible
   screens[ SCREEN_MAIN ].write( TEMPERATURE_COL, TEMPERATURE_ROW, formattedTemperature.c_str() );
   screens[ SCREEN_MAIN ].write( HUMIDITY_COL, HUMIDITY_ROW, formattedHumidity.c_str() );
 }
@@ -287,11 +292,12 @@ void environment_tasks()
 /**
  * Gathers information from the RTC, formats it, and sends it to the screen
  */
-void datetime_tasks()
+void datetimeTasks()
 {
   // Get current/date time and then write them to the LCD
   String formattedDate = getDateFromRTC();
   String formattedTime = getTimeFromRTC();
+  // writes directly to the main screen even if its not visible
   screens[ SCREEN_MAIN ].write( DATE_COL, DATE_ROW, formattedDate.c_str() );
   screens[ SCREEN_MAIN ].write( TIME_COL, TIME_ROW, formattedTime.c_str() );
 }
@@ -299,7 +305,7 @@ void datetime_tasks()
 /**
  * Checks to see if the IR receiver has received a code
  */
-void ir_tasks()
+void irTasks()
 {
   if ( IrReceiver.decode() ) {
     int command = IrReceiver.decodedIRData.command;
@@ -346,8 +352,8 @@ void setup()
  */
 void loop()
 {
-  environment_tasks();
-  datetime_tasks();
-  ir_tasks();
-  writeScreenToLCD( );
+  environmentTasks();
+  datetimeTasks();
+  irTasks();
+  writeScreenToLCD();
 }
