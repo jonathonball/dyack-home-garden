@@ -20,7 +20,7 @@ LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
 
 /* DHT11 Temp/Humidity Module */
 dht DHT;
-const unsigned long ENVIRONMENT_READ_INTERVAL = 3000ul;
+const unsigned long ENVIRONMENT_READ_INTERVAL = 15000ul;
 const int DHT11_PIN                           = 2;
 const int TEMPERATURE_COL                     = 12;
 const int TEMPERATURE_ROW                     = 0;
@@ -42,8 +42,9 @@ const int TIME_ROW                    = 1;
 const int DATE_TIME_WIDTH             = 2;
 
 /* HK-M121 IR Receiver Module */
-const int IR_PIN          = 4;
-const int IR_LED_FEEDBACK = 1;
+const int IR_PIN            = 4;
+const int IR_LED_FEEDBACK   = 1;
+const String IR_SERIAL_NAME = "[HX-M121]: ";
 
 struct IrCommand {
   int command;
@@ -65,7 +66,7 @@ const IrCommand IR_COMMANDS[ IR_COMMAND_COUNT ] = {
   { 0x9,  "up" },
   { 0x7,  "down" }
 };
-LinkedList<IrCommand> *IRCommandQueue = new LinkedList<IrCommand>();
+LinkedList<IrCommand> *irCommandQueue = new LinkedList<IrCommand>();
 const int MAX_IR_COMMAND_QUEUE_SIZE = 5;
 
 /* ScreenBuffer Object stores screen data so that we can switch between screen. */
@@ -305,22 +306,54 @@ void datetimeTasks()
 /**
  * Checks to see if the IR receiver has received a code
  */
-void irTasks()
+void checkIrDataReceived()
 {
   if ( IrReceiver.decode() ) {
-    int command = IrReceiver.decodedIRData.command;
     // Check if the command is a repeat
     if ( !( IrReceiver.decodedIRData.flags & (IRDATA_FLAGS_IS_AUTO_REPEAT | IRDATA_FLAGS_IS_REPEAT)) ) {
       IrReceiver.printIRResultShort( &Serial );
-      // Check to see if the IR command is one we recognized
-      for ( int index = 0; index < IR_COMMAND_COUNT; index++ ) {
-        if ( IR_COMMANDS[index].command == command ) {
-          Serial.println( "[HX-M121]: Received button " + IR_COMMANDS[index].button );
-        }
-      }
+      findKnownIrCommand(); 
     }
     IrReceiver.resume();
   }
+}
+
+/**
+ * Checks to see if the last command received is one we are aware of
+ */
+void findKnownIrCommand()
+{
+  int command = IrReceiver.decodedIRData.command;
+  // Check to see if the IR command is one we recognized
+  for ( int index = 0; index < IR_COMMAND_COUNT; index++ ) {
+    if ( IR_COMMANDS[ index ].command == command ) {
+      Serial.println( IR_SERIAL_NAME + "received button " + IR_COMMANDS[ index ].button );
+      addToIrCommandQueue( index );
+    }
+  }
+}
+
+void addToIrCommandQueue( int index )
+{
+  if ( irCommandQueue->size() < MAX_IR_COMMAND_QUEUE_SIZE ) {
+    IrCommand irCommand = IR_COMMANDS[ index ];
+    Serial.println( IR_SERIAL_NAME + "Adding " + irCommand.button + " to queue." );
+    irCommandQueue->add( irCommand );
+    Serial.println( IR_SERIAL_NAME + "Items in queue " + irCommandQueue->size() );
+  }
+}
+
+void processIrCommandQueue()
+{
+  if ( irCommandQueue.size() > 0 ) {
+     
+  }
+}
+
+void irTasks()
+{
+  checkIrDataReceived();
+  processIrCommandQueue();
 }
 
 /**
