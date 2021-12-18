@@ -1,8 +1,8 @@
-#include <DS3231.h>
-#include <Wire.h>
+#include <Wire.h>          // built-in
+#include <string.h>        // built-in
+#include <LiquidCrystal.h> // built-in
 #include <dht.h>
-#include <LiquidCrystal.h>
-#include <string.h>
+#include <DS3231.h>
 #include <IRremote.hpp>
 #include <LinkedList.h>
 
@@ -20,7 +20,7 @@ LiquidCrystal lcd(7, 8, 9, 10, 11, 12);
 
 /* DHT11 Temp/Humidity Module */
 dht DHT;
-const unsigned long ENVIRONMENT_READ_INTERVAL = 15000ul;
+const unsigned long ENVIRONMENT_READ_INTERVAL = 15000ul; // 15 seconds
 const int DHT11_PIN                           = 2;
 const int TEMPERATURE_COL                     = 12;
 const int TEMPERATURE_ROW                     = 0;
@@ -34,7 +34,7 @@ const int ENVIRONMENT_PRECISION               = 0; // how many decimal places to
 
 /* DS3231 RTC Module */
 RTClib myRTC;
-const unsigned long RTC_READ_INTERVAL = 10000ul;
+const unsigned long RTC_READ_INTERVAL = 10000ul; // 10 seconds
 const int DATE_COL                    = 0;
 const int DATE_ROW                    = 0;
 const int TIME_COL                    = 0;
@@ -42,9 +42,10 @@ const int TIME_ROW                    = 1;
 const int DATE_TIME_WIDTH             = 2;
 
 /* HK-M121 IR Receiver Module */
-const int IR_PIN            = 4;
-const int IR_LED_FEEDBACK   = 1;
-const String IR_SERIAL_NAME = "[HX-M121]: ";
+const int IR_PIN                           = 4;
+const int IR_LED_FEEDBACK                  = 1;
+const unsigned long IR_PROCESSING_INTERVAL = 250ul; // 0.25 seconds
+const String IR_SERIAL_NAME                = "[HX-M121]: ";
 
 struct IrCommand {
   int command;
@@ -174,8 +175,8 @@ float celsiusToFahrenheit( float celsius )
 String * checkEnvironment()
 {
   static String results[2];
-  static String temperature                  = "?F";
-  static String humidity                     = "?%";
+  static String temperature                  = "LOAD";
+  static String humidity                     = "LOAD";
   static unsigned long measurementTimestamp  = millis();
 
   if ( millis() - measurementTimestamp > ENVIRONMENT_READ_INTERVAL ) {
@@ -345,9 +346,23 @@ void addToIrCommandQueue( int index )
 
 void processIrCommandQueue()
 {
-  if ( irCommandQueue.size() > 0 ) {
-     
+  static unsigned long measurementTimestamp = 0ul;
+
+  if ( millis() - measurementTimestamp > IR_PROCESSING_INTERVAL ) {
+    if ( irCommandQueue->size() > 0 ) {
+      IrCommand irCommand = irCommandQueue->shift();
+    }
   }
+}
+
+void handleMainScreenIRCommand() 
+{
+  // TODO
+}
+
+void handleScheduleScreenIRCommand() 
+{
+  // TODO
 }
 
 void irTasks()
