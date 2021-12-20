@@ -75,27 +75,27 @@ const int IR_BUTTON_FUNC  = 0x47;
 const int IR_BUTTON_EQ    = 0x19;
 const int IR_BUTTON_ST    = 0xD;
 const IrCommand IR_COMMANDS[ IR_COMMAND_COUNT ] = {
-  { IR_BUTTON_ZERO, "0" },
-  { IR_BUTTON_ONE,  "1" },
-  { IR_BUTTON_TWO, "2" },
+  { IR_BUTTON_ZERO,  "0" },
+  { IR_BUTTON_ONE,   "1" },
+  { IR_BUTTON_TWO,   "2" },
   { IR_BUTTON_THREE, "3" },
   { IR_BUTTON_FOUR,  "4" },
-  { IR_BUTTON_FIVE, "5" },
-  { IR_BUTTON_SIX, "6" },
+  { IR_BUTTON_FIVE,  "5" },
+  { IR_BUTTON_SIX,   "6" },
   { IR_BUTTON_SEVEN, "7" },
   { IR_BUTTON_EIGHT, "8" },
-  { IR_BUTTON_NINE, "9" },
-  { IR_BUTTON_PLAY, "playPause" },
-  { IR_BUTTON_UP,  "up" },
+  { IR_BUTTON_NINE,  "9" },
+  { IR_BUTTON_PLAY,  "playPause" },
+  { IR_BUTTON_UP,    "up" },
   { IR_BUTTON_DOWN,  "down" },
   { IR_BUTTON_POWER, "power" },
-  { IR_BUTTON_VUP, "volUp" },
+  { IR_BUTTON_VUP,   "volUp" },
   { IR_BUTTON_VDOWN, "volDown" },
-  { IR_BUTTON_PREV, "prev" },
-  { IR_BUTTON_NEXT, "next" },
-  { IR_BUTTON_FUNC, "funcStop" },
-  { IR_BUTTON_EQ, "eq" },
-  { IR_BUTTON_ST,  "stRept" }
+  { IR_BUTTON_PREV,  "prev" },
+  { IR_BUTTON_NEXT,  "next" },
+  { IR_BUTTON_FUNC,  "funcStop" },
+  { IR_BUTTON_EQ,    "eq" },
+  { IR_BUTTON_ST,    "stRept" }
 };
 LinkedList<int> irCommandQueue = LinkedList<int>();
 const int MAX_IR_COMMAND_QUEUE_SIZE = 5;
