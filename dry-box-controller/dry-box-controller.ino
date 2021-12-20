@@ -51,23 +51,53 @@ struct IrCommand {
   int command;
   String button;
 };
-const int IR_COMMAND_COUNT = 12;
+const int IR_COMMAND_COUNT = 21;
 // These remote codes were read from an Elegoo remote
+const int IR_BUTTON_ZERO  = 0x16;
+const int IR_BUTTON_ONE   = 0xC;
+const int IR_BUTTON_TWO   = 0x18;
+const int IR_BUTTON_THREE = 0x5E;
+const int IR_BUTTON_FOUR  = 0x8;
+const int IR_BUTTON_FIVE  = 0x1C;
+const int IR_BUTTON_SIX   = 0x5A;
+const int IR_BUTTON_SEVEN = 0x42;
+const int IR_BUTTON_EIGHT = 0x52;
+const int IR_BUTTON_NINE  = 0x4A;
+const int IR_BUTTON_PLAY  = 0x40;
+const int IR_BUTTON_UP    = 0x9;
+const int IR_BUTTON_DOWN  = 0x7;
+const int IR_BUTTON_POWER = 0x45;
+const int IR_BUTTON_VUP   = 0x46;
+const int IR_BUTTON_VDOWN = 0x15;
+const int IR_BUTTON_PREV  = 0x44;
+const int IR_BUTTON_NEXT  = 0x43;
+const int IR_BUTTON_FUNC  = 0x47;
+const int IR_BUTTON_EQ    = 0x19;
+const int IR_BUTTON_ST    = 0xD;
 const IrCommand IR_COMMANDS[ IR_COMMAND_COUNT ] = {
-  { 0xC,  "1" },
-  { 0x18, "2" },
-  { 0x5E, "3" },
-  { 0x8,  "4" },
-  { 0x1C, "5" },
-  { 0x5A, "6" },
-  { 0x42, "7" },
-  { 0x52, "8" },
-  { 0x4A, "9" },
-  { 0x40, "play/pause" },
-  { 0x9,  "up" },
-  { 0x7,  "down" }
+  { IR_BUTTON_ZERO, "0" },
+  { IR_BUTTON_ONE,  "1" },
+  { IR_BUTTON_TWO, "2" },
+  { IR_BUTTON_THREE, "3" },
+  { IR_BUTTON_FOUR,  "4" },
+  { IR_BUTTON_FIVE, "5" },
+  { IR_BUTTON_SIX, "6" },
+  { IR_BUTTON_SEVEN, "7" },
+  { IR_BUTTON_EIGHT, "8" },
+  { IR_BUTTON_NINE, "9" },
+  { IR_BUTTON_PLAY, "playPause" },
+  { IR_BUTTON_UP,  "up" },
+  { IR_BUTTON_DOWN,  "down" },
+  { IR_BUTTON_POWER, "power" },
+  { IR_BUTTON_VUP, "volUp" },
+  { IR_BUTTON_VDOWN, "volDown" },
+  { IR_BUTTON_PREV, "prev" },
+  { IR_BUTTON_NEXT, "next" },
+  { IR_BUTTON_FUNC, "funcStop" },
+  { IR_BUTTON_EQ, "eq" },
+  { IR_BUTTON_ST,  "stRept" }
 };
-LinkedList<IrCommand> *irCommandQueue = new LinkedList<IrCommand>();
+LinkedList<int> irCommandQueue = LinkedList<int>();
 const int MAX_IR_COMMAND_QUEUE_SIZE = 5;
 
 /* ScreenBuffer Object stores screen data so that we can switch between screen. */
@@ -117,8 +147,14 @@ public:
     cursorY = y;
   }
 
+  /**
+   * Gets a row by int index
+   */
   String getRow( int row ) { return rows[ row ]; }
 
+  /**
+   * Copies a string into the buffer starting at internal 
+   */
   void write( String str )
   {
     int strIndex = 0;
@@ -130,6 +166,9 @@ public:
     }
   }
 
+  /**
+   * Set internal cursor position and copy string into the buffer
+   */
   void write( int x, int y, String str )
   {
     setCursorPosition( x, y );
@@ -143,7 +182,7 @@ ScreenBuffer screens[] = {
 };
 // These definitions exist so we can call the screens by name instead of number
 const int SCREEN_MAIN = 0;
-const int SCREEN_SCHEDULE = 1;
+const int SCREEN_SCHEDULE_SET = 1;
 
 int activeScreen = SCREEN_MAIN; // The currently selected (visbile) screen
 
@@ -334,37 +373,73 @@ void findKnownIrCommand()
   }
 }
 
+/**
+ * Use an index to add an infrared command to the queue
+ */
 void addToIrCommandQueue( int index )
 {
-  if ( irCommandQueue->size() < MAX_IR_COMMAND_QUEUE_SIZE ) {
+  if ( irCommandQueue.size() < MAX_IR_COMMAND_QUEUE_SIZE ) {
     IrCommand irCommand = IR_COMMANDS[ index ];
     Serial.println( IR_SERIAL_NAME + "Adding " + irCommand.button + " to queue." );
-    irCommandQueue->add( irCommand );
-    Serial.println( IR_SERIAL_NAME + "Items in queue " + irCommandQueue->size() );
+    irCommandQueue.add( index );
+    Serial.println( IR_SERIAL_NAME + "Items in queue " + irCommandQueue.size() );
   }
 }
 
+/**
+ * Will process commands out of the ir queue until its exhausted
+ */
 void processIrCommandQueue()
 {
   static unsigned long measurementTimestamp = 0ul;
 
   if ( millis() - measurementTimestamp > IR_PROCESSING_INTERVAL ) {
-    if ( irCommandQueue->size() > 0 ) {
-      IrCommand irCommand = irCommandQueue->shift();
+    if ( irCommandQueue.size() > 0 ) {
+      int index = irCommandQueue.shift();
+      Serial.println( IR_SERIAL_NAME + "Processing " + IR_COMMANDS[ index ].button );
+      switch ( activeScreen ) {
+        case SCREEN_MAIN:
+          handleMainScreenIRCommand( index );
+          break;
+        case SCREEN_SCHEDULE_SET:
+          handleScheduleScreenIRCommand( index );
+          break;
+      }
     }
   }
 }
 
-void handleMainScreenIRCommand() 
+/**
+ * Handle IR input when main screen is active
+ */
+void handleMainScreenIRCommand( int index )
 {
-  // TODO
+  IrCommand irCommand = IR_COMMANDS[ index ];
+  switch ( irCommand.command ) {
+    case IR_BUTTON_FUNC:
+      Serial.println( IR_SERIAL_NAME + "Switching to schedule screen" );
+      activeScreen = SCREEN_SCHEDULE_SET;
+      break;
+  }
 }
 
-void handleScheduleScreenIRCommand() 
+/**
+ * Handle IR input when schedule screen is active
+ */
+void handleScheduleScreenIRCommand( int index )
 {
-  // TODO
+  IrCommand irCommand = IR_COMMANDS[ index ];
+  switch ( irCommand.command ) {
+    case IR_BUTTON_FUNC:
+      Serial.println( IR_SERIAL_NAME + "Switching to main screen" );
+      activeScreen = SCREEN_MAIN;
+      break;
+  }
 }
 
+/**
+ * Run infrared related tasks
+ */
 void irTasks()
 {
   checkIrDataReceived();
